@@ -135,13 +135,14 @@
 
     form {
       display: flex;
+      flex-wrap: wrap;
       gap: 8px;
       padding: 16px;
       border-bottom: 1px solid var(--border);
     }
 
     input[type="text"] {
-      flex: 1;
+      flex: 1 1 180px;
       min-width: 0;
       padding: 12px 14px;
       font-size: 1rem;
@@ -153,13 +154,29 @@
       transition: border-color 0.15s, box-shadow 0.15s;
     }
 
-    input[type="text"]:focus {
+    input[type="text"]:focus,
+    select:focus {
       border-color: var(--accent);
       box-shadow: 0 0 0 3px rgba(34, 160, 107, 0.18);
     }
 
+    select {
+      flex: 1 1 140px;
+      min-width: 0;
+      padding: 12px 10px;
+      font: inherit;
+      font-size: 0.95rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--card);
+      color: var(--text);
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
     .btn-add {
-      padding: 0 18px;
+      padding: 12px 18px;
       font-size: 1rem;
       font-weight: 600;
       color: #fff;
@@ -214,6 +231,25 @@
     }
 
     li:last-child { border-bottom: none; }
+
+    li.categoria {
+      gap: 8px;
+      padding: 10px 16px 8px;
+      background: var(--bg);
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      animation: none;
+    }
+
+    li.categoria .conteggio {
+      margin-left: auto;
+      font-weight: 600;
+      letter-spacing: 0;
+      text-transform: none;
+    }
 
     @keyframes comparsa {
       from { opacity: 0; transform: translateY(-4px); }
@@ -335,6 +371,7 @@
     <section class="card">
       <form id="form-aggiungi" autocomplete="off">
         <input type="text" id="input-prodotto" placeholder="Es. latte, pane, mele…" aria-label="Nome del prodotto" maxlength="100" required />
+        <select id="select-categoria" aria-label="Categoria"></select>
         <button type="submit" class="btn-add">Aggiungi</button>
       </form>
 
@@ -364,6 +401,35 @@
     const contatore = document.getElementById("contatore");
     const restanti = document.getElementById("restanti");
     const btnPulisci = document.getElementById("btn-pulisci");
+    const selectCategoria = document.getElementById("select-categoria");
+
+    // Le categorie vengono mostrate in quest'ordine (circa quello del supermercato)
+    const CATEGORIE = [
+      { id: "frutta", nome: "Frutta", icona: "🍎" },
+      { id: "verdura", nome: "Verdura", icona: "🥦" },
+      { id: "pane", nome: "Pane e dolci", icona: "🥖" },
+      { id: "latticini", nome: "Latticini e uova", icona: "🧀" },
+      { id: "carne", nome: "Carne e pesce", icona: "🍗" },
+      { id: "dispensa", nome: "Dispensa", icona: "🥫" },
+      { id: "surgelati", nome: "Surgelati", icona: "🧊" },
+      { id: "bevande", nome: "Bevande", icona: "🥤" },
+      { id: "casa", nome: "Casa e igiene", icona: "🧴" },
+      { id: "altro", nome: "Altro", icona: "🛒" },
+    ];
+    const CATEGORIA_PREDEFINITA = "altro";
+
+    CATEGORIE.forEach((c) => {
+      const opzione = document.createElement("option");
+      opzione.value = c.id;
+      opzione.textContent = `${c.icona} ${c.nome}`;
+      selectCategoria.appendChild(opzione);
+    });
+    selectCategoria.value = CATEGORIA_PREDEFINITA;
+
+    // I prodotti salvati prima dell'arrivo delle categorie finiscono in "Altro"
+    function categoriaDi(p) {
+      return CATEGORIE.some((c) => c.id === p.categoria) ? p.categoria : CATEGORIA_PREDEFINITA;
+    }
 
     let prodotti = carica();
 
@@ -387,34 +453,56 @@
     function render() {
       lista.innerHTML = "";
 
-      prodotti.forEach((p) => {
-        const li = document.createElement("li");
-        if (p.comprato) li.classList.add("comprato");
+      CATEGORIE.forEach((cat) => {
+        const delGruppo = prodotti.filter((p) => categoriaDi(p) === cat.id);
+        if (delGruppo.length === 0) return;
 
-        const check = document.createElement("input");
-        check.type = "checkbox";
-        check.className = "check";
-        check.checked = p.comprato;
-        check.setAttribute("aria-label", "Segna come comprato");
-        check.addEventListener("change", () => toggle(p.id));
+        const titolo = document.createElement("li");
+        titolo.className = "categoria";
+        const nomeCat = document.createElement("span");
+        nomeCat.textContent = `${cat.icona} ${cat.nome}`;
+        const conteggio = document.createElement("span");
+        conteggio.className = "conteggio";
+        const mancanti = delGruppo.filter((p) => !p.comprato).length;
+        conteggio.textContent = mancanti === 0 ? "✓ fatto" : `${mancanti} da comprare`;
+        titolo.append(nomeCat, conteggio);
+        lista.appendChild(titolo);
 
-        const nome = document.createElement("span");
-        nome.className = "nome";
-        nome.textContent = p.nome;
-        nome.addEventListener("click", () => toggle(p.id));
-
-        const del = document.createElement("button");
-        del.className = "btn-del";
-        del.type = "button";
-        del.textContent = "×";
-        del.title = "Elimina";
-        del.setAttribute("aria-label", "Elimina " + p.nome);
-        del.addEventListener("click", () => elimina(p.id));
-
-        li.append(check, nome, del);
-        lista.appendChild(li);
+        delGruppo.forEach((p) => renderProdotto(p));
       });
 
+      aggiornaContatori();
+    }
+
+    function renderProdotto(p) {
+      const li = document.createElement("li");
+      if (p.comprato) li.classList.add("comprato");
+
+      const check = document.createElement("input");
+      check.type = "checkbox";
+      check.className = "check";
+      check.checked = p.comprato;
+      check.setAttribute("aria-label", "Segna come comprato");
+      check.addEventListener("change", () => toggle(p.id));
+
+      const nome = document.createElement("span");
+      nome.className = "nome";
+      nome.textContent = p.nome;
+      nome.addEventListener("click", () => toggle(p.id));
+
+      const del = document.createElement("button");
+      del.className = "btn-del";
+      del.type = "button";
+      del.textContent = "×";
+      del.title = "Elimina";
+      del.setAttribute("aria-label", "Elimina " + p.nome);
+      del.addEventListener("click", () => elimina(p.id));
+
+      li.append(check, nome, del);
+      lista.appendChild(li);
+    }
+
+    function aggiornaContatori() {
       const totale = prodotti.length;
       const comprati = prodotti.filter((p) => p.comprato).length;
 
@@ -437,8 +525,8 @@
       btnPulisci.hidden = comprati === 0;
     }
 
-    function aggiungi(nome) {
-      prodotti.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2), nome, comprato: false });
+    function aggiungi(nome, categoria) {
+      prodotti.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2), nome, categoria, comprato: false });
       salva();
       render();
     }
@@ -460,7 +548,7 @@
       e.preventDefault();
       const nome = input.value.trim();
       if (!nome) return;
-      aggiungi(nome);
+      aggiungi(nome, selectCategoria.value);
       input.value = "";
       input.focus();
     });
