@@ -4,6 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Lista della spesa</title>
+  <script>
+    // Applica il tema prima che la pagina venga disegnata (evita il "flash" chiaro)
+    (function () {
+      let tema = null;
+      try { tema = localStorage.getItem("lista-spesa-tema"); } catch {}
+      if (tema !== "chiaro" && tema !== "scuro") {
+        tema = window.matchMedia("(prefers-color-scheme: dark)").matches ? "scuro" : "chiaro";
+      }
+      document.documentElement.dataset.theme = tema === "scuro" ? "dark" : "light";
+    })();
+  </script>
   <style>
     :root {
       --bg: #f4f6f8;
@@ -17,16 +28,17 @@
       --shadow: 0 10px 30px rgba(31, 41, 51, 0.08);
     }
 
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #14171c;
-        --card: #1e232a;
-        --text: #e8ecf1;
-        --muted: #8590a2;
-        --border: #2d343e;
-        --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-      }
+    :root[data-theme="dark"] {
+      --bg: #14171c;
+      --card: #1e232a;
+      --text: #e8ecf1;
+      --muted: #8590a2;
+      --border: #2d343e;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      color-scheme: dark;
     }
+
+    body { transition: background 0.25s, color 0.25s; }
 
     * { box-sizing: border-box; }
 
@@ -48,6 +60,57 @@
 
     header {
       margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+    }
+
+    .tema {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+      margin-top: 6px;
+      padding: 0;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font: inherit;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    .tema .binario {
+      position: relative;
+      width: 48px;
+      height: 28px;
+      border-radius: 999px;
+      background: var(--border);
+      transition: background 0.2s;
+    }
+
+    .tema .pallino {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--card);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+      display: grid;
+      place-content: center;
+      font-size: 0.75rem;
+      transition: transform 0.2s;
+    }
+
+    .tema[aria-checked="true"] .binario { background: var(--accent); }
+    .tema[aria-checked="true"] .pallino { transform: translateX(20px); }
+
+    .tema:focus-visible .binario {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
     }
 
     h1 {
@@ -259,8 +322,14 @@
 <body>
   <main class="app">
     <header>
+      <div>
       <h1>🛒 Lista della spesa</h1>
       <p class="subtitle">Aggiungi i prodotti e spuntali quando li hai comprati.</p>
+      </div>
+      <button type="button" class="tema" id="btn-tema" role="switch" aria-checked="false" aria-label="Tema scuro">
+        <span id="etichetta-tema">Scuro</span>
+        <span class="binario"><span class="pallino" id="icona-tema">☀️</span></span>
+      </button>
     </header>
 
     <section class="card">
@@ -401,6 +470,27 @@
       salva();
       render();
     });
+
+    // --- Tema chiaro / scuro ---
+    const CHIAVE_TEMA = "lista-spesa-tema";
+    const btnTema = document.getElementById("btn-tema");
+    const iconaTema = document.getElementById("icona-tema");
+
+    function aggiornaInterruttore() {
+      const scuro = document.documentElement.dataset.theme === "dark";
+      btnTema.setAttribute("aria-checked", String(scuro));
+      iconaTema.textContent = scuro ? "🌙" : "☀️";
+      btnTema.title = scuro ? "Passa al tema chiaro" : "Passa al tema scuro";
+    }
+
+    btnTema.addEventListener("click", () => {
+      const scuro = document.documentElement.dataset.theme !== "dark";
+      document.documentElement.dataset.theme = scuro ? "dark" : "light";
+      try { localStorage.setItem(CHIAVE_TEMA, scuro ? "scuro" : "chiaro"); } catch {}
+      aggiornaInterruttore();
+    });
+
+    aggiornaInterruttore();
 
     render();
     input.focus();
