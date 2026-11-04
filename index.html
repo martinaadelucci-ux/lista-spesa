@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lista della spesa</title>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --card: #ffffff;
+      --text: #1f2933;
+      --muted: #8a94a6;
+      --border: #e4e8ee;
+      --accent: #22a06b;
+      --accent-hover: #1b8a5b;
+      --danger: #e5484d;
+      --shadow: 0 10px 30px rgba(31, 41, 51, 0.08);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #14171c;
+        --card: #1e232a;
+        --text: #e8ecf1;
+        --muted: #8590a2;
+        --border: #2d343e;
+        --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      }
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      padding: 48px 16px;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 480px;
+    }
+
+    header {
+      margin-bottom: 24px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.9rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    form {
+      display: flex;
+      gap: 8px;
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    input[type="text"] {
+      flex: 1;
+      min-width: 0;
+      padding: 12px 14px;
+      font-size: 1rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: transparent;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(34, 160, 107, 0.18);
+    }
+
+    .btn-add {
+      padding: 0 18px;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+      background: var(--accent);
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .btn-add:hover { background: var(--accent-hover); }
+
+    ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    li {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      animation: comparsa 0.2s ease;
+    }
+
+    li:last-child { border-bottom: none; }
+
+    @keyframes comparsa {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: none; }
+    }
+
+    .check {
+      appearance: none;
+      width: 22px;
+      height: 22px;
+      flex-shrink: 0;
+      border: 2px solid var(--border);
+      border-radius: 50%;
+      cursor: pointer;
+      display: grid;
+      place-content: center;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .check:checked {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .check:checked::after {
+      content: "";
+      width: 6px;
+      height: 11px;
+      border: solid #fff;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg) translate(-1px, -1px);
+    }
+
+    .nome {
+      flex: 1;
+      font-size: 1rem;
+      word-break: break-word;
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+
+    li.comprato .nome {
+      color: var(--muted);
+      text-decoration: line-through;
+    }
+
+    .btn-del {
+      width: 32px;
+      height: 32px;
+      flex-shrink: 0;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 1.2rem;
+      line-height: 1;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .btn-del:hover {
+      background: rgba(229, 72, 77, 0.12);
+      color: var(--danger);
+    }
+
+    .vuota {
+      padding: 40px 16px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .vuota span {
+      display: block;
+      font-size: 2rem;
+      margin-bottom: 8px;
+    }
+
+    footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      font-size: 0.875rem;
+      color: var(--muted);
+    }
+
+    .btn-link {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 0.875rem;
+      cursor: pointer;
+      padding: 4px 0;
+    }
+
+    .btn-link:hover { color: var(--danger); }
+
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <h1>🛒 Lista della spesa</h1>
+      <p class="subtitle">Aggiungi i prodotti e spuntali quando li hai comprati.</p>
+    </header>
+
+    <section class="card">
+      <form id="form-aggiungi" autocomplete="off">
+        <input type="text" id="input-prodotto" placeholder="Es. latte, pane, mele…" aria-label="Nome del prodotto" maxlength="100" required />
+        <button type="submit" class="btn-add">Aggiungi</button>
+      </form>
+
+      <ul id="lista"></ul>
+
+      <div class="vuota" id="vuota">
+        <span>🧺</span>
+        La lista è vuota. Aggiungi il primo prodotto!
+      </div>
+
+      <footer id="footer" hidden>
+        <span id="contatore"></span>
+        <button type="button" class="btn-link" id="btn-pulisci">Rimuovi comprati</button>
+      </footer>
+    </section>
+  </main>
+
+  <script>
+    const CHIAVE = "lista-spesa";
+    const form = document.getElementById("form-aggiungi");
+    const input = document.getElementById("input-prodotto");
+    const lista = document.getElementById("lista");
+    const vuota = document.getElementById("vuota");
+    const footer = document.getElementById("footer");
+    const contatore = document.getElementById("contatore");
+    const btnPulisci = document.getElementById("btn-pulisci");
+
+    let prodotti = carica();
+
+    function carica() {
+      try {
+        const dati = JSON.parse(localStorage.getItem(CHIAVE));
+        return Array.isArray(dati) ? dati : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function salva() {
+      try {
+        localStorage.setItem(CHIAVE, JSON.stringify(prodotti));
+      } catch {
+        // Salvataggio non disponibile (es. navigazione privata)
+      }
+    }
+
+    function render() {
+      lista.innerHTML = "";
+
+      prodotti.forEach((p) => {
+        const li = document.createElement("li");
+        if (p.comprato) li.classList.add("comprato");
+
+        const check = document.createElement("input");
+        check.type = "checkbox";
+        check.className = "check";
+        check.checked = p.comprato;
+        check.setAttribute("aria-label", "Segna come comprato");
+        check.addEventListener("change", () => toggle(p.id));
+
+        const nome = document.createElement("span");
+        nome.className = "nome";
+        nome.textContent = p.nome;
+        nome.addEventListener("click", () => toggle(p.id));
+
+        const del = document.createElement("button");
+        del.className = "btn-del";
+        del.type = "button";
+        del.textContent = "×";
+        del.title = "Elimina";
+        del.setAttribute("aria-label", "Elimina " + p.nome);
+        del.addEventListener("click", () => elimina(p.id));
+
+        li.append(check, nome, del);
+        lista.appendChild(li);
+      });
+
+      const totale = prodotti.length;
+      const comprati = prodotti.filter((p) => p.comprato).length;
+
+      vuota.hidden = totale > 0;
+      footer.hidden = totale === 0;
+      contatore.textContent = `${comprati} di ${totale} ${totale === 1 ? "prodotto comprato" : "prodotti comprati"}`;
+      btnPulisci.hidden = comprati === 0;
+    }
+
+    function aggiungi(nome) {
+      prodotti.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2), nome, comprato: false });
+      salva();
+      render();
+    }
+
+    function toggle(id) {
+      const p = prodotti.find((x) => x.id === id);
+      if (p) p.comprato = !p.comprato;
+      salva();
+      render();
+    }
+
+    function elimina(id) {
+      prodotti = prodotti.filter((x) => x.id !== id);
+      salva();
+      render();
+    }
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const nome = input.value.trim();
+      if (!nome) return;
+      aggiungi(nome);
+      input.value = "";
+      input.focus();
+    });
+
+    btnPulisci.addEventListener("click", () => {
+      prodotti = prodotti.filter((p) => !p.comprato);
+      salva();
+      render();
+    });
+
+    render();
+    input.focus();
+  </script>
+</body>
+</html>
