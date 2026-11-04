@@ -109,6 +109,32 @@
 
     .btn-add:hover { background: var(--accent-hover); }
 
+    .restanti {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.95rem;
+      font-weight: 500;
+    }
+
+    .restanti .badge {
+      min-width: 28px;
+      height: 28px;
+      padding: 0 8px;
+      border-radius: 999px;
+      background: rgba(34, 160, 107, 0.14);
+      color: var(--accent);
+      font-weight: 700;
+      display: inline-grid;
+      place-content: center;
+    }
+
+    .restanti.finito {
+      color: var(--accent);
+    }
+
     ul {
       list-style: none;
       margin: 0;
@@ -239,6 +265,8 @@
         <button type="submit" class="btn-add">Aggiungi</button>
       </form>
 
+      <div class="restanti" id="restanti" hidden></div>
+
       <ul id="lista"></ul>
 
       <div class="vuota" id="vuota">
@@ -261,6 +289,7 @@
     const vuota = document.getElementById("vuota");
     const footer = document.getElementById("footer");
     const contatore = document.getElementById("contatore");
+    const restanti = document.getElementById("restanti");
     const btnPulisci = document.getElementById("btn-pulisci");
 
     let prodotti = carica();
@@ -315,6 +344,19 @@
 
       const totale = prodotti.length;
       const comprati = prodotti.filter((p) => p.comprato).length;
+
+      const daComprare = totale - comprati;
+      restanti.hidden = totale === 0;
+      restanti.classList.toggle("finito", daComprare === 0);
+      restanti.innerHTML = "";
+      if (daComprare === 0) {
+        restanti.textContent = "🎉 Hai comprato tutto!";
+      } else {
+        const badge = document.createElement("span");
+        badge.className = "badge";
+        badge.textContent = daComprare;
+        restanti.append(badge, daComprare === 1 ? "prodotto da comprare" : "prodotti da comprare");
+      }
 
       vuota.hidden = totale > 0;
       footer.hidden = totale === 0;
