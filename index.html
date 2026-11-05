@@ -418,13 +418,118 @@
     ];
     const CATEGORIA_PREDEFINITA = "altro";
 
+    // --- Riconoscimento automatico della categoria ---
+    // Parole chiave per categoria (al singolare o al plurale: le varianti sono gestite da radice()).
+    const PAROLE = {
+      frutta: "frutta mela pera banana arancia mandarino clementina limone lime pompelmo fragola ciliegia uva pesca nettarina albicocca prugna susina kiwi ananas melone anguria cocomero mango papaya avocado fico mirtillo lampone mora ribes melograno cachi caco castagna noce mandorla nocciola pistacchio dattero arachide",
+      verdura: "verdura insalata lattuga rucola valeriana songino spinaci pomodoro pomodorino zucchina zucchino melanzana peperone cetriolo carota patata cipolla scalogno aglio sedano finocchio broccolo broccoletti cavolfiore cavolo verza cappuccio carciofo asparago fungo funghi champignon porro ravanello radicchio indivia scarola zucca pisello fagiolino basilico prezzemolo rosmarino salvia menta timo origano erbette bietola cicoria friarielli germogli",
+      pane: "pane panino pagnotta baguette rosetta ciabatta focaccia piadina pancarre tramezzino grissino cracker crackers taralli brioche cornetto croissant torta crostata biscotto merendina plumcake ciambella pandoro panettone colomba cioccolato cioccolata cioccolatino caramella wafer",
+      latticini: "latte yogurt yoghurt burro panna formaggio mozzarella burrata parmigiano grana pecorino ricotta mascarpone stracchino crescenza gorgonzola scamorza provola provolone fontina emmental asiago taleggio feta uovo uova kefir besciamella",
+      carne: "carne pollo tacchino manzo maiale vitello agnello coniglio macinato bistecca fettina salsiccia prosciutto salame mortadella bresaola speck pancetta guanciale wurstel hamburger cotoletta arrosto spezzatino polpette affettati affettato pesce salmone merluzzo baccala orata branzino spigola trota sogliola gambero gamberetto scampo calamaro seppia cozza vongola polpo acciuga alice sgombro sardina",
+      dispensa: "pasta spaghetti penne fusilli rigatoni maccheroni tagliatelle lasagne gnocchi riso farina zucchero sale pepe olio aceto oliva caffe te the tea tisana camomilla orzo cereali muesli fiocchi legumi lenticchie ceci fagioli tonno sugo pesto passata pelati maionese ketchup senape marmellata confettura miele nutella dado brodo lievito spezie curry paprika cannella patatine popcorn mais capperi sottaceti biscottate",
+      surgelati: "surgelato surgelati congelato gelato ghiacciolo ghiaccio bastoncini sofficini minestrone pizza",
+      bevande: "acqua vino birra succo spremuta aranciata limonata gassosa chinotto cola bibita bibite spumante prosecco amaro liquore aperitivo energy",
+      casa: "detersivo sapone shampoo balsamo bagnoschiuma docciaschiuma dentifricio spazzolino collutorio deodorante carta tovaglioli tovagliolo fazzoletti fazzoletto spugna spugne candeggina ammorbidente sgrassatore anticalcare igienizzante sacchetti sacchi pellicola alluminio assorbenti pannolini salviette rasoio lamette cotone cotton dischetti lampadina batterie pile lavastoviglie lavatrice",
+    };
+
+    // Espressioni di più parole o parole "decisive": vincono sulle altre.
+    // Es. "piselli surgelati" → Surgelati, "succo di mela" → Bevande.
+    const PRIORITARIE = [
+      ["tè freddo", "bevande"], ["the freddo", "bevande"], ["latte di soia", "latticini"],
+      ["fette biscottate", "pane"], ["carta igienica", "casa"], ["carta da cucina", "casa"],
+      ["in scatola", "dispensa"], ["sott olio", "dispensa"], ["patatine fritte", "surgelati"],
+      ["coca cola", "bevande"], ["acqua frizzante", "bevande"], ["acqua naturale", "bevande"],
+      ["surgelato", "surgelati"], ["surgelati", "surgelati"], ["congelato", "surgelati"],
+      ["gelato", "surgelati"], ["bastoncini", "surgelati"],
+      ["succo", "bevande"], ["spremuta", "bevande"],
+      ["passata", "dispensa"], ["pelati", "dispensa"], ["sugo", "dispensa"],
+      ["detersivo", "casa"], ["sapone", "casa"],
+    ];
+
+    // Parole da ignorare (es. "per" in "detersivo per piatti" non deve diventare "pera")
+    const PAROLE_VUOTE = new Set("di da del della dello dei degli delle al alla allo ai agli alle con per in su il lo la i gli le un uno una e o senza tipo bio light zero confezione pacco pacchi kg g gr l ml".split(" "));
+
+    function normalizza(testo) {
+      return testo
+        .toLowerCase()
+        .normalize("NFD").replace(/[̀-ͯ]/g, "") // toglie gli accenti
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim();
+    }
+
+    // Riduce una parola a una "radice" per riconoscere singolare e plurale:
+    // mela/mele, pesca/pesche, arancia/arance, fungo/funghi, uovo/uova…
+    function radice(parola) {
+      if (parola.length <= 3) return parola;
+      let r = parola.replace(/[aeiou]$/, "");
+      r = r.replace(/(c|g)h$/, "$1").replace(/(c|g)i$/, "$1");
+      return r;
+    }
+
+    // Testo → elenco di radici, senza le parole vuote
+    function radici(testo) {
+      return normalizza(testo).split(" ").filter((w) => w && !PAROLE_VUOTE.has(w)).map(radice);
+    }
+
+    const INDICE = new Map(); // radice → id categoria
+    for (const [cat, elenco] of Object.entries(PAROLE)) {
+      for (const p of elenco.split(" ")) {
+        const r = radice(normalizza(p));
+        if (!INDICE.has(r)) INDICE.set(r, cat);
+      }
+    }
+    const INDICE_PRIORITARIE = PRIORITARIE.map(([espr, cat]) => [" " + radici(espr).join(" ") + " ", cat]);
+
+    // Categorie scelte a mano dall'utente: la volta dopo lo stesso prodotto le riprende
+    const CHIAVE_MEMORIA = "lista-spesa-memoria-categorie";
+    let memoria = {};
+    try { memoria = JSON.parse(localStorage.getItem(CHIAVE_MEMORIA)) || {}; } catch {}
+
+    function ricorda(nome, categoria) {
+      memoria[normalizza(nome)] = categoria;
+      try { localStorage.setItem(CHIAVE_MEMORIA, JSON.stringify(memoria)); } catch {}
+    }
+
+    // Restituisce l'id della categoria riconosciuta, oppure null se non la riconosce
+    function indovinaCategoria(nome) {
+      const testo = normalizza(nome);
+      if (!testo) return null;
+
+      if (CATEGORIE.some((c) => c.id === memoria[testo])) return memoria[testo];
+
+      const rad = radici(testo);
+      const frase = " " + rad.join(" ") + " ";
+
+      for (const [espressione, cat] of INDICE_PRIORITARIE) {
+        if (frase.includes(espressione)) return cat;
+      }
+
+      // Altrimenti vince la prima parola riconosciuta, partendo da sinistra
+      // ("yogurt alla fragola" → Latticini, "torta di mele" → Pane e dolci)
+      const trovata = rad.find((r) => INDICE.has(r));
+      return trovata ? INDICE.get(trovata) : null;
+    }
+
+    const AUTO = "auto";
+    const opzioneAuto = document.createElement("option");
+    opzioneAuto.value = AUTO;
+    selectCategoria.appendChild(opzioneAuto);
+
     CATEGORIE.forEach((c) => {
       const opzione = document.createElement("option");
       opzione.value = c.id;
       opzione.textContent = `${c.icona} ${c.nome}`;
       selectCategoria.appendChild(opzione);
     });
-    selectCategoria.value = CATEGORIA_PREDEFINITA;
+    selectCategoria.value = AUTO;
+
+    // Mentre scrivi, l'opzione "Automatica" mostra la categoria che verrà usata
+    function aggiornaSuggerimento() {
+      const cat = CATEGORIE.find((c) => c.id === indovinaCategoria(input.value));
+      opzioneAuto.textContent = cat ? `✨ Auto: ${cat.icona} ${cat.nome}` : "✨ Automatica";
+    }
+    aggiornaSuggerimento();
+    input.addEventListener("input", aggiornaSuggerimento);
 
     // I prodotti salvati prima dell'arrivo delle categorie finiscono in "Altro"
     function categoriaDi(p) {
@@ -548,8 +653,16 @@
       e.preventDefault();
       const nome = input.value.trim();
       if (!nome) return;
-      aggiungi(nome, selectCategoria.value);
+      let categoria = selectCategoria.value;
+      if (categoria === AUTO) {
+        categoria = indovinaCategoria(nome) || CATEGORIA_PREDEFINITA;
+      } else if (categoria !== indovinaCategoria(nome)) {
+        ricorda(nome, categoria); // l'utente ha corretto la scelta automatica
+      }
+      aggiungi(nome, categoria);
       input.value = "";
+      selectCategoria.value = AUTO;
+      aggiornaSuggerimento();
       input.focus();
     });
 
